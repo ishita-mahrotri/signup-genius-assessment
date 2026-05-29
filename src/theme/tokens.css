@@ -1,0 +1,188 @@
+/* ─────────────────────────────────────────────
+   DESIGN TOKENS
+   Inspired by SignUpGenius — teal-blue brand,
+   orange CTA, clean neutrals.
+
+   Structure
+   1. Raw palette  (never used directly in components)
+   2. Semantic tokens — light theme default
+   3. Dark theme override  [data-theme="dark"]
+   4. Typography
+   5. Spacing
+   6. Radii & Shadows
+────────────────────────────────────────────── */
+
+/* ── 1. Raw Palette ── */
+:root {
+  /* Brand teal-blue */
+  --palette-teal-900: #063d57;
+  --palette-teal-700: #0a6d96;
+  --palette-teal-500: #0e8fc0;
+  --palette-teal-300: #5ab8da;
+  --palette-teal-100: #d6f0f9;
+
+  /* CTA orange */
+  --palette-orange-700: #c44d10;
+  --palette-orange-500: #f26522;
+  --palette-orange-300: #f8a47a;
+  --palette-orange-100: #fde8d8;
+
+  /* Neutrals */
+  --palette-neutral-950: #0d1117;
+  --palette-neutral-900: #1a202c;
+  --palette-neutral-700: #4a5568;
+  --palette-neutral-500: #718096;
+  --palette-neutral-300: #cbd5e0;
+  --palette-neutral-200: #e2e8f0;
+  --palette-neutral-100: #f5f8fc;
+  --palette-neutral-50: #ffffff;
+
+  /* Feedback */
+  --palette-green-500: #22c55e;
+  --palette-green-100: #dcfce7;
+  --palette-red-500: #ef4444;
+  --palette-red-100: #fee2e2;
+}
+
+/* ── 2. Semantic Tokens — Light (default) ── */
+:root {
+  /* Surfaces */
+  --color-bg: var(--palette-neutral-50);
+  --color-surface: var(--palette-neutral-100);
+  --color-surface-raised: var(--palette-neutral-50);
+
+  /* Borders */
+  --color-border: var(--palette-neutral-200);
+  --color-border-strong: var(--palette-neutral-300);
+
+  /* Text */
+  --color-text-primary: var(--palette-neutral-900);
+  --color-text-secondary: var(--palette-neutral-700);
+  --color-text-muted: var(--palette-neutral-500);
+  --color-text-on-accent: var(--palette-neutral-50);
+
+  /* Accent — primary interactive / brand */
+  --color-accent: var(--palette-teal-500);
+  --color-accent-hover: var(--palette-teal-700);
+  --color-accent-subtle: var(--palette-teal-100);
+
+  /* CTA — sign-up action button */
+  --color-cta: var(--palette-orange-500);
+  --color-cta-hover: var(--palette-orange-700);
+  --color-cta-subtle: var(--palette-orange-100);
+  --color-text-on-cta: var(--palette-neutral-50);
+
+  /* Slot states */
+  --color-slot-signed: var(--palette-teal-100);
+  --color-slot-full-bg: var(--palette-neutral-100);
+  --color-slot-full-text: var(--palette-neutral-500);
+
+  /* Feedback */
+  --color-success: var(--palette-green-500);
+  --color-success-subtle: var(--palette-green-100);
+  --color-error: var(--palette-red-500);
+  --color-error-subtle: var(--palette-red-100);
+}
+
+/* ── 3. Dark Theme Override ── */
+[data-theme="dark"] {
+  /* Surfaces */
+  --color-bg: #0d1b2a;
+  --color-surface: #1a2e42;
+  --color-surface-raised: #22394f;
+
+  /* Borders */
+  --color-border: #2d4257;
+  --color-border-strong: #3d5a73;
+
+  /* Text */
+  --color-text-primary: #eef2f7;
+  --color-text-secondary: #a8bbcc;
+  --color-text-muted: #6b8da8;
+  --color-text-on-accent: #0d1b2a;
+
+  /* Accent */
+  --color-accent: #38b6e8;
+  --color-accent-hover: #5ec8f0;
+  --color-accent-subtle: rgba(56, 182, 232, 0.15);
+
+  /* CTA */
+  --color-cta: #f26522;
+  --color-cta-hover: #ff7d38;
+  --color-cta-subtle: rgba(242, 101, 34, 0.15);
+  --color-text-on-cta: #ffffff;
+
+  /* Slot states */
+  --color-slot-signed: rgba(56, 182, 232, 0.12);
+  --color-slot-full-bg: #1a2e42;
+  --color-slot-full-text: #6b8da8;
+
+  /* Feedback */
+  --color-success: #4ade80;
+  --color-success-subtle: rgba(74, 222, 128, 0.15);
+  --color-error: #f87171;
+  --color-error-subtle: rgba(248, 113, 113, 0.15);
+}
+
+/* ── 4. Typography ── */
+:root {
+  /* Families */
+  --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  /* Sizes */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+
+  /* Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Letter spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+}
+
+/* ── 5. Spacing (4px base scale) ── */
+:root {
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+}
+
+/* ── 6. Radii & Shadows ── */
+:root {
+  --radius-sm: 4px; /*  4px */
+  --radius-md: 8px; /*  8px */
+  --radius-lg: 12px; /* 12px */
+  --radius-xl: 16px; /* 16px */
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+
+  /* Transitions */
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+}
