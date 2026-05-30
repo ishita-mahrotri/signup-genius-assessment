@@ -2,6 +2,8 @@ import type { SlotData } from "../types";
 import styles from "./Slot.module.css";
 import { slotGroups } from "../../assets/dataStructure";
 import { useState } from "react";
+import { ParticipantBadge } from "../ParticipantBadge/ParticipantBadge";
+import { SlotAction } from "../SlotAction/SlotAction";
 
 interface SlotProps {
   slot: SlotData;
@@ -85,40 +87,25 @@ export function Slot({ slot, currentUser }: SlotProps) {
       </div>
       <div className={styles.footer}>
         {slotParticipants.length ? (
-          <ul
+          <div
             className={styles.participantList}
             aria-label={`Participants signed up for ${label}`}
           >
             {slotParticipants.map((name) => (
-              <li key={name.trim()} className={styles.participant}>
-                {name.trim()}
-              </li>
+              <ParticipantBadge key={name.trim()} name={name} />
             ))}
-          </ul>
+          </div>
         ) : (
           <p className={styles.emptyState}>No signups yet - be the first!</p>
         )}
-        <button
-          type="button"
+        <SlotAction
+          label={label}
+          isSignedUp={isSignedUp}
+          isFull={isFull}
+          isLoggedIn={isLoggedIn}
           onClick={handleAction}
-          aria-pressed={isSignedUp}
-          className={[
-            styles.action,
-            isSignedUp ? styles.actionCancel : "",
-            isFull ? styles.actionDisabled : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          disabled={isFull || !isLoggedIn}
-          aria-describedby={!isLoggedIn ? "login-help" : undefined}
-          aria-label={
-            isSignedUp
-              ? `Remove your sign-up for ${label}`
-              : `Sign up for ${label}`
-          }
-        >
-          {isSignedUp ? "Cancel" : isFull ? `${label} is full` : "Sign up"}
-        </button>
+          describedBy={!isLoggedIn ? "login-help" : undefined}
+        />
       </div>
       {!isLoggedIn ? (
         <p id="login-help" className={styles.helpText}>
