@@ -51,3 +51,12 @@
   box-shadow: none;
   cursor: not-allowed;
 }
+
+.notLoggedIn {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  border-style: dashed;
+  box-shadow: none;
+  cursor: not-allowed;
+}

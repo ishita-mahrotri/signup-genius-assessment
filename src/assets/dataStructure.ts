@@ -101,9 +101,3 @@ export const dataStructure = {
     },
   ],
 };
-
-// Derive the type from the values if you need it
-// export type SlotCustomGroup =
-//   (typeof SlotCustomGroup)[keyof typeof SlotCustomGroup];
-// export type SlotCategory = typeof SlotCategory[keyof typeof SlotCategory];
-// export type SlotShift = typeof SlotShift[keyof typeof SlotShift];

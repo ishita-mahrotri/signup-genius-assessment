@@ -89,6 +89,7 @@ export function Slot({ slot, currentUser }: SlotProps) {
         {slotParticipants.length ? (
           <div
             className={styles.participantList}
+            role="group"
             aria-label={`Participants signed up for ${label}`}
           >
             {slotParticipants.map((name) => (
@@ -102,7 +103,7 @@ export function Slot({ slot, currentUser }: SlotProps) {
           label={label}
           isSignedUp={isSignedUp}
           isFull={isFull}
-          isLoggedIn={isLoggedIn}
+          currentUser={currentUser}
           onClick={handleAction}
           describedBy={!isLoggedIn ? "login-help" : undefined}
         />

@@ -1,0 +1,415 @@
+# ADR-001: Component API Design
+
+## Context
+
+The UI needed a clear component split for a sign-up sheet with multiple slots,
+three grouping options, and a shared current user — without over-engineering
+for demo scope.
+
+## Decision
+
+Four components, each with a single responsibility:
+
+- **`Slot`** — renders one sign-up card, owns sign-up/cancel interaction
+- **`SlotGroup`** — filters and groups slots by the active group, renders a labeled section per group
+- **`App`** — owns active tab and theme state, composes `SlotGroup`, defines `CURRENT_USER`
+
+`slotGroupData` is derived directly from `currentGroup` — no second `useState` needed:
+
+```tsx
+const groupDataMap: Record<GroupType, SlotGroupData[]> = {
+  Shift: slotGroups.slotShift,
+  Category: slotGroups.slotCategory,
+  "Custom Label": slotGroups.slotCustomLabel,
+};
+
+const slotGroupData = groupDataMap[currentGroup];
+```
+
+Shared types live in `src/components/types.ts`:
+
+```ts
+export type SlotData = {
+  id: string;
+  capacity: number;
+  participants: string[];
+  customLabelId: string;
+  categoryId: string;
+  shiftId: string;
+};
+
+export type GroupType = "Shift" | "Category" | "Custom Label";
+```
+
+## Consequences
+
+- `Slot` is fully self-contained and testable in isolation.
+- Adding a new grouping only requires updating `GroupType`, `groupDataMap`, and `slotGroups` — no structural component changes.
+- `CURRENT_USER` is hardcoded for the demo. In production it would come from an auth context
+
+---
+
+# ADR-002: State Management
+
+## Context
+
+Three pieces of state needed a home: participant lists, active tab, and theme.
+Each has different consumers and update patterns, so each is managed separately.
+
+## Decisions
+
+### Participant state — local to `Slot`
+
+| Option                             | Key reason not chosen                                                                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Local `useState` in `Slot`** ✅  | Chosen — self-contained, no prop drilling, fast updates with no sibling re-renders                                                 |
+| **Lift to `App`**                  | Requires callbacks two levels down; only worth it if other components need participant data — they don't in the scope of this demo |
+| **Global store (Zustand / Redux)** | Significant overhead for a demo with one user session and static data                                                              |
+| **`useReducer`**                   | Two state transitions — `useState` with a functional updater is cleaner at this scale                                              |
+
+```tsx
+const [slotParticipants, setSlotParticipants] = useState(participants);
+
+function handleAction() {
+  if (isSignedUp) {
+    setSlotParticipants((prev) => prev.filter((p) => p !== currentUser));
+  } else if (!isFull) {
+    setSlotParticipants((prev) => [...prev, currentUser]);
+  }
+}
+```
+
+### Active tab state — `App`
+
+Lives in `App` because it determines which `SlotGroup` renders. `slotGroupData`
+is derived from it — no second `useState` needed.
+
+### Theme state — `ThemeContext`
+
+Lives in context because it must reach both `App` (toggle button label) and
+`document.documentElement` (CSS custom property switching).
+
+## Consequences
+
+- Participant state is fast and contained — updates in one `Slot` don't re-render siblings.
+- If `participants` prop changes after mount, local state won't reflect it. Accepted trade-off for this scope.
+- In production, participant state would be server-owned.
+
+---
+
+# ADR-003: Theming Strategy
+
+## Context
+
+The UI needed to support light and dark modes without duplicating component styles, within a React 19 + Vite + CSS Modules stack.
+
+## Styling Options Considered
+
+| Option                                                                                                                                                                                                                                                                                              | Key reason not chosen                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **CSS Modules + CSS custom properties** ✅                                                                                                                                                                                                                                                          | Pros: Simplest possible setup, works in every bundler, zero runtime, plain CSS transfers. Easy for consumers to override or theme. No framework lock-in. Cons: No automatic type safety on class names (though tools like typed-css-modules help). Variant management gets verbose without a helper like clsx. You build your own theming conventions. |
+| **Tailwind CSS**                                                                                                                                                                                                                                                                                    | Pros: Familiar to many engineers, fast iteration.                                                                                                                                                                                                                                                                                                      |
+| Cons: You either force consumers to also use Tailwind (so your classes resolve in their build), or you ship a compiled stylesheet they can't easily customize. It works great for the shadcn-style "copy the source into your repo" pattern, but not that great for a traditional published package |
+| **CSS-in-JS** (styled-components)                                                                                                                                                                                                                                                                   | styled-components officially entered maintenance mode. The maintainer has publicly stated that they no longer recommend using it for new projects.                                                                                                                                                                                                     |
+| **Sass / SCSS**                                                                                                                                                                                                                                                                                     | Compile-time variables can't toggle at runtime — cannot power a JS-controlled dark mode switch                                                                                                                                                                                                                                                         |
+| **Vanilla CSS**                                                                                                                                                                                                                                                                                     | No component scoping; global namespace collisions. Not an option for when you need to easily switch themes                                                                                                                                                                                                                                             |
+
+## Decision
+
+**CSS Modules** for component scoping + **CSS custom properties** for theming.
+
+Semantic tokens are declared on `:root` for light mode and overridden under
+`[data-theme="dark"]` on `document.documentElement`:
+
+```css
+:root {
+  --color-surface: #ffffff;
+  --color-text-primary: #111827;
+  --color-accent: #0d9488;
+}
+
+[data-theme="dark"] {
+  --color-surface: #111827;
+  --color-text-primary: #f9fafb;
+  --color-accent: #2dd4bf;
+}
+```
+
+A `ThemeContext` manages state and applies the attribute via `useEffect`:
+
+```tsx
+useEffect(() => {
+  document.documentElement.setAttribute("data-theme", theme);
+}, [theme]);
+```
+
+Components reference only semantic tokens — never raw palette values or light/dark
+conditionals:
+
+```css
+/* Slot.module.css — unaware of light or dark mode */
+.slot {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+}
+```
+
+### Token categories
+
+| Category            | Examples                                                                   |
+| ------------------- | -------------------------------------------------------------------------- |
+| Raw palette         | `--teal-500`, `--orange-500`, `--neutral-900`                              |
+| Semantic color      | `--color-surface`, `--color-text-primary`, `--color-accent`, `--color-cta` |
+| Typography          | `--text-xs` → `--text-3xl`, `--font-medium`, `--font-semibold`             |
+| Spacing             | `--space-4` → `--space-64` (named by pixel value)                          |
+| Radius              | `--radius-sm` (4px) → `--radius-full` (9999px)                             |
+| Shadow / Transition | `--shadow-sm/md/lg`, `--transition-fast/normal`                            |
+
+## Consequences
+
+- Adding a new theme requires one new `[data-theme="x"]` block in `tokens.css` — no component changes.
+
+---
+
+# ADR-004: Data Structure Design
+
+## Context
+
+Slot data needed to express group membership across three dimensions without coupling
+`Slot` to a specific grouping scheme, and without TypeScript enums (disallowed by
+the `erasableSyntaxOnly` compiler flag).
+
+## Alternatives Considered
+
+| Option                                            | Key reason not chosen                                                                                |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **`as const` IDs + `Object.fromEntries` maps** ✅ | Chosen — type-safe, no runtime overhead, O(1) label lookup so input growth has no performance impact |
+| **TypeScript enums**                              | Disallowed by `erasableSyntaxOnly`; generate runtime code                                            |
+| **`.find()` on every render**                     | O(n) per render for data that never changes — a pre-computed map is better                           |
+
+## Decision
+
+Group IDs are `as const` strings. Each `SlotData` carries three foreign-key-style IDs.
+Label resolution uses maps computed once at module load — not per render:
+
+```ts
+const customLabelMap = Object.fromEntries(
+  slotGroups.slotCustomLabel.map(({ id, name }) => [id, name]),
+);
+
+O(1) lookup in component
+const label = customLabelMap[customLabelId];
+```
+
+Each slot references all three group types by ID:
+
+```ts
+{
+  id: "slot-1",
+  capacity: 3,
+  participants: [],
+  shiftId: "morning",
+  categoryId: "food",
+  customLabelId: "setup",
+}
+```
+
+## Consequences
+
+- Label maps are computed once at module load — zero per-render cost.
+- Adding a new group type requires updates to `slotGroupIDs`, `slotGroups`, `SlotData`, and `App` tab list — all localized, additive changes.
+
+---
+
+# ADR-005: Unit Testing Strategy
+
+## Context
+
+Tests needed to cover component behaviour and interactions within a React 19 +
+Vite + TypeScript stack, without introducing a heavy test infrastructure.
+
+## Tool Choices
+
+| Tool                                 | Alternative         | Why chosen                                                                                                                                        |
+| ------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vitest** ✅                        | Jest                | Native Vite integration — no separate transform config, shares the same `vite.config.ts`                                                          |
+| **React Testing Library** ✅         | Enzyme / direct DOM | Tests behaviour from the user's perspective, not implementation internals                                                                         |
+| **`@testing-library/user-event`** ✅ | `fireEvent`         | Simulates real browser interactions (pointer events, focus, keyboard) — `fireEvent` bypasses native disabled state on buttons                     |
+| **`happy-dom`** ✅                   | `jsdom`             | `jsdom` has a CJS/ESM conflict with `html-encoding-sniffer` in Vitest 4 — `happy-dom` is a drop-in replacement with no known issues in this stack |
+
+## Decision
+
+Tests query by **accessible role and label** — the same interface a user or screen
+reader uses. No `data-testid`, no class name selectors, no snapshot tests.
+
+```tsx
+// ✅ Query by role + accessible name
+screen.getByRole("button", { name: /sign up for morning setup/i });
+
+// ❌ Avoid — couples tests to implementation
+screen.getByTestId("signup-btn");
+container.querySelector(".action");
+```
+
+A shared `defaultProps` object covers the happy path. Individual tests override
+only the props relevant to the case being tested.
+
+```tsx
+const defaultProps = {
+  label: "Morning Setup",
+  isSignedUp: false,
+  isFull: false,
+  currentUser: "Alice",
+  onClick: vi.fn(),
+};
+```
+
+`vi.clearAllMocks()` in `beforeEach` ensures mock call counts don't bleed between tests.
+
+## Coverage
+
+### `SlotAction` — 5 tests
+
+| Test                                            | What it covers                             |
+| ----------------------------------------------- | ------------------------------------------ |
+| Enabled when spots available and user logged in | Happy path — button is interactive         |
+| Disabled when slot is full                      | `isFull=true` disables the button          |
+| Disabled when `currentUser` is empty            | Empty string = not logged in               |
+| Disabled when `currentUser` is only whitespace  | `.trim()` check — `"   "` treated as empty |
+| Calls `onClick` when clicked                    | Click handler fires on a valid interaction |
+
+## Consequences
+
+- Tests are resilient to markup refactors — changing a `<div>` to a `<section>` doesn't break anything as long as the accessible role and label are preserved.
+- Snapshot tests were deliberately avoided — they couple tests to exact markup and produce high noise-to-signal on refactors.
+
+---
+
+# Production Considerations
+
+## Decisions and Their Production Alternatives
+
+### Authentication
+
+**Current:** `CURRENT_USER` is a hardcoded constant in `App.tsx`.
+
+```tsx
+const CURRENT_USER = "Ishita M.";
+```
+
+**Production:** `currentUser` would be resolved from an auth provider. It would flow into the component tree via an
+`AuthContext`, not a constant.
+
+```tsx
+const { user } = useAuth();
+// user.displayName passed down as currentUser
+```
+
+No component below `App` would change — the prop interface stays the same.
+
+---
+
+### State Management
+
+**Current:** Sign-up state lives locally in each `Slot` via `useState`, initialized
+from the `participants` prop.
+
+```tsx
+const [slotParticipants, setSlotParticipants] = useState(participants);
+```
+
+This means concurrent edits from other users are invisible until the page reloads,
+and state is lost on unmount.
+
+**Production:** Participant state would be server-owned. The component would write via a mutation with optimistic updates:
+
+```tsx
+const { data: slot } = useQuery(["slot", slot.id], fetchSlot);
+const { mutate: signUp } = useMutation(postSignUp, {
+  onMutate: () => optimisticallyAddUser(),
+  onError: () => rollback(),
+  onSettled: () => invalidateQuery(["slot", slot.id]),
+});
+```
+
+### Data Fetching
+
+**Current:** Data is a static import from `dataStructure.ts` — always available,
+never loading, never fails.
+
+```ts
+import { dataStructure } from "./assets/dataStructure";
+```
+
+**Production:** Slot data would come from an API. The component tree would need
+loading and error states:
+
+- Skeleton UI while slots are being fetched
+- Appropriate error messaging if the fetch fails
+- Empty state if the API returns zero slots
+
+---
+
+### Error Handling
+
+**Current:** None. A failed sign-up action has no feedback — the UI updates optimistically
+with no rollback.
+
+**Production:**
+
+- Mutation failures roll back optimistic state and display an inline error or toast
+- Network errors on fetch surface a retry prompt
+- Validation errors (e.g., slot filled by someone else between click and server write)
+  show a conflict message and re-sync state from the server response
+
+### Accessibility
+
+**Current:** Manually reviewed. ARIA roles, live regions, and keyboard interactions
+were added by inspection.
+
+**Production:**
+
+Use tools given below, or similar, for testing accessibility criteria are met:
+
+- Screen reader pass (VoiceOver + NVDA)
+- Lighthouse accessibility score gated in CI with appropriate target range.
+
+---
+
+### Versioning and Release
+
+**Production:**
+
+- package components into a single bundle to be used with one import OR release each component as it's own package - decision would depend on the scope of the component library, the teams consuming it and usage requirements.
+
+---
+
+## Components - Production Alternatives
+
+### ParticipantBadge
+
+-configured to have variations to render for different use cases. Example - right now, participants and tags for slot categories both use pill shaped chips. Ideally they could both use the same component with a variant "prop" that will render it in different visual styles.
+
+### SlotGroup
+
+- make this component collapsible, configure it so developers can choose to render it as collapsed or expanded by default
+- As group options grow, SignUpSheet would also need a different option to select the grouping than the current tab implementation. This could be done as a dropdown or side-nav depending on the size of groups.
+
+### Other
+
+- for the group details shown as pills in slot cards, skip displaying the one that it is already grouped under - in the current scope that is repetitive data
+- consume currentUser from AuthContext instead of props
+- depending on how widely participants data is used across the app and how often it updates, consider moving it into global scope or keep it local by lifting state up as needed
+
+## Summary
+
+| Area          | Demo               | Production                                       |
+| ------------- | ------------------ | ------------------------------------------------ |
+| Auth          | Hardcoded constant | Auth context from session / JWT                  |
+| Data fetching | Static import      | API with loading + error states                  |
+| Accessibility | Manual review      | screen reader pass, and verification using tools |
+| CI            | None               | Typecheck + lint + test + build + Lighthouse     |
+
+## Consequences
+
+The component API, token system and theming can support these production upgrades without rewriting it entirely.

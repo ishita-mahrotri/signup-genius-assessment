@@ -4,7 +4,7 @@ interface SlotActionProps {
   label: string;
   isSignedUp: boolean;
   isFull: boolean;
-  isLoggedIn: boolean;
+  currentUser: string;
   onClick: () => void;
   describedBy?: string;
 }
@@ -13,10 +13,12 @@ export function SlotAction({
   label,
   isSignedUp,
   isFull,
-  isLoggedIn,
+  currentUser,
   onClick,
   describedBy,
 }: SlotActionProps) {
+  const isLoggedIn = currentUser?.trim() !== "" && currentUser != null;
+
   return (
     <button
       type="button"
@@ -26,6 +28,7 @@ export function SlotAction({
         styles.button,
         isSignedUp ? styles.cancel : "",
         isFull ? styles.disabled : "",
+        !isLoggedIn ? styles.notLoggedIn : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -35,7 +38,13 @@ export function SlotAction({
         isSignedUp ? `Remove your sign-up for ${label}` : `Sign up for ${label}`
       }
     >
-      {isSignedUp ? "Cancel" : isFull ? `${label} is full` : "Sign up"}
+      {isSignedUp
+        ? "Cancel"
+        : isFull
+          ? `${label} is full`
+          : !isLoggedIn
+            ? "Log in to sign up"
+            : "Sign up"}
     </button>
   );
 }
